@@ -6,12 +6,6 @@ from matplotlib import pyplot as plt
 edges = None
 padding = 100
 
-def subtractPadding(val):
-    return max(0, val - padding)
-
-def addPadding(val):
-    return val + padding;
-
 def cropImage(img):
     global edges
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
@@ -20,15 +14,12 @@ def cropImage(img):
     cnt = contours[0]
     edges = cnt
     x,y,w,h = cv2.boundingRect(cnt)
-    print(x,y,x+w,y+h)
-    result1 = map(subtractPadding, (x, y))
-    result2 = map(addPadding, (x + w, y + h))
-    result2[0] = min(len(cnt), result2[0])
-    result2[1] = min(len(cnt[0]), result2[1])
-    x1 = result1[0]
-    y1 = result1[1]
-    x2 = result2[0]
-    y2 = result2[1]
+
+    (x1, y1) = map(lambda val: max(0, val - padding), (x, y))
+    (x2, y2) = map(lambda val: val + padding, (x + w, y + h))
+
+    x2 = min(len(cnt), x2)
+    y2 = min(len(cnt[0]), y2)
 
     croppedImage = img[y1:y2, x1:x2]
     return croppedImage
@@ -36,7 +27,6 @@ def cropImage(img):
 path = os.path.dirname(os.path.abspath(__file__ ))
 path += "/../images/" + sys.argv[1]
 img = cv2.imread(path)
-
 
 plt.subplot(221),plt.imshow(img, cmap = 'gray')
 plt.title('Original Image'), plt.xticks([]), plt.yticks([])
