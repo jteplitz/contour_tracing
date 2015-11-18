@@ -59,4 +59,4 @@ docs/_build/
 target/
 
 # local requirements
-requirements.txt
+# requirements.txt - ADD ALL REQUIREMENTS HERE

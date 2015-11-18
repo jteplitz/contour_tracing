@@ -1,0 +1,4 @@
+Pillow
+cv2
+matplotlib
+shapely

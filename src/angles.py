@@ -22,7 +22,8 @@ dist_threshold = 100
 # DATA
 veins = []
 vein_features = {}
-vein_features['intersections'] = {} # STORED AS MAP TO (VEIN_ID, (INTERSECTION.X, INTERSECTION.Y), ANGLE, ANGLE_SUPPLEMENTARY)
+vein_features['intersections'] = {} # STORED AS VEIN_ID MAP TO (VEIN_ID, (INTERSECTION.X, INTERSECTION.Y), ANGLE, ANGLE_SUPPLEMENTARY)
+vein_features['intersection_distances'] = {} 
 
 def dot(vA, vB):
     return vA[0]*vB[0]+vA[1]*vB[1]
@@ -72,7 +73,7 @@ def generateRandomVeins():
 		for index, line in enumerate(vein):
 			cv2.line(out_img, (line[0][1],line[0][0]), (line[1][1], line[1][0]), colors[index], 2)
 
-def extractFeatures():
+def extractIntersections():
 	for index, vein in enumerate(veins):
 		for index2, vein2 in enumerate(veins):
 			if set(vein) != set(vein2):
@@ -88,13 +89,40 @@ def extractFeatures():
 							print angle
 							vein_features['intersections'][index].append((index2, (int(intersection.y), int(intersection.x)), angle, 180 - angle))
 							cv2.circle(out_img, (int(intersection.y), int(intersection.x)), 5, (255,245,238), -1)
-	pprint(vein_features)
+
+def extractIntersectionDistances():
+	for v_id, intersections in vein_features['intersections'].iteritems():
+		for intersection in intersections:
+			intersection_endpoints = (v_id, intersection[0])
+			intersection_point = intersection[1]
+			print '\n'
+			print intersection_endpoints
+			for v_id2, intersections2 in vein_features['intersections'].iteritems():
+				for intersection2 in intersections2:
+			# 		# if v_id2 != intersection2[0] and (v_id == v_id2 and intersection[0] != intersection2[0] or v_id != v_id2):
+					intersection2_endpoints = (v_id2, intersection2[0])
+					intersection2_point = intersection2[1]
+					print intersection2_endpoints
+
+					if intersection_point != intersection2_point:					
+						a = np.array(intersection_point)
+						b = np.array(intersection2_point)
+						dist = np.linalg.norm(a-b)
+						print intersection2_endpoints
+
+						if (intersection_endpoints, intersection_point) not in vein_features['intersection_distances']:
+							print intersection2_endpoints
+							vein_features['intersection_distances'][(intersection_endpoints, intersection_point)] = {}
+						vein_features['intersection_distances'][(intersection_endpoints, intersection_point)][(intersection2_endpoints, intersection2_point)] = dist
 
 generateRandomVeins()
-extractFeatures()
+extractIntersections()
+extractIntersectionDistances()
+pprint(vein_features)
+
 plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
 plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-plt.show()
+# plt.show()
 
 
 
