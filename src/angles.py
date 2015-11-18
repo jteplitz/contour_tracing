@@ -1,0 +1,100 @@
+import os, sys
+import cv2
+import numpy as np
+import random
+from matplotlib import pyplot as plt
+from shapely.geometry import LineString
+from pprint import pprint
+import math
+
+# SETUP
+path = os.path.dirname(os.path.abspath(__file__ ))
+path += "/../images/" + sys.argv[1]
+img = cv2.imread(path)
+out_img = np.zeros((img.shape[0], img.shape[1], 3), np.uint8)
+
+# PARAMETERS
+num_rand_lines = 5
+num_lines_per_segment = 5
+colors = [(255,0,0), (100,149,237), (0,255,255), (34,139,34), (255,127,36)]
+dist_threshold = 100
+
+# DATA
+veins = []
+vein_features = {}
+vein_features['intersections'] = {} # STORED AS MAP TO (VEIN_ID, (INTERSECTION.X, INTERSECTION.Y), ANGLE, ANGLE_SUPPLEMENTARY)
+
+def dot(vA, vB):
+    return vA[0]*vB[0]+vA[1]*vB[1]
+def ang(lineA, lineB):
+    # Get nicer vector form
+    vA = [(lineA[0][0]-lineA[1][0]), (lineA[0][1]-lineA[1][1])]
+    vB = [(lineB[0][0]-lineB[1][0]), (lineB[0][1]-lineB[1][1])]
+    # Get dot prod
+    dot_prod = dot(vA, vB)
+    # Get magnitudes
+    magA = dot(vA, vA)**0.5
+    magB = dot(vB, vB)**0.5
+    # Get cosine value
+    cos_ = dot_prod/magA/magB
+    # Get angle in radians and then convert to degrees
+    angle = math.acos(dot_prod/magB/magA)
+    # Basically doing angle <- angle mod 360
+    ang_deg = math.degrees(angle)%360
+
+    if ang_deg-180>=0:
+        # As in if statement
+        return 360 - ang_deg
+    else: 
+        return ang_deg
+
+def generateRandomVeins():
+	for line in range(0, num_rand_lines):
+		lines = []
+		start_x_val = random.randint(0, img.shape[0])
+		start_y_val = random.randint(0, img.shape[1])
+		for line in range(0, num_lines_per_segment):
+			dist = dist_threshold + 1
+			while dist > dist_threshold:
+				end_x_val = random.randint(0, img.shape[0])
+				end_y_val = random.randint(0, img.shape[1])
+				a = np.array((start_x_val, start_y_val))
+				b = np.array((end_x_val, end_y_val))
+				dist = np.linalg.norm(a-b)
+			lines.append(((start_x_val, start_y_val), (end_x_val, end_y_val)))
+			start_x_val = end_x_val
+			start_y_val = end_y_val
+		veins.append(lines)
+	print len(veins)
+
+	for vein in veins:
+		cv2.circle(out_img, (vein[0][0][1], vein[0][0][0]), 10, (255,255,0), -1)
+		for index, line in enumerate(vein):
+			cv2.line(out_img, (line[0][1],line[0][0]), (line[1][1], line[1][0]), colors[index], 2)
+
+def extractFeatures():
+	for index, vein in enumerate(veins):
+		for index2, vein2 in enumerate(veins):
+			if set(vein) != set(vein2):
+				for line in vein:
+					for line2 in vein2:
+						line_format = LineString(list(line))
+						line_2_format = LineString(list(line2))
+						intersection = line_format.intersection(line_2_format)
+						if not intersection.is_empty:
+							if index not in vein_features['intersections']:
+								vein_features['intersections'][index] = []
+							angle = ang(line, line2)
+							print angle
+							vein_features['intersections'][index].append((index2, (int(intersection.y), int(intersection.x)), angle, 180 - angle))
+							cv2.circle(out_img, (int(intersection.y), int(intersection.x)), 5, (255,245,238), -1)
+	pprint(vein_features)
+
+generateRandomVeins()
+extractFeatures()
+plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
+plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+plt.show()
+
+
+

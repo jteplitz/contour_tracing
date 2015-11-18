@@ -2,7 +2,7 @@ from PIL import Image
 import os
 
 path = os.path.dirname(os.path.abspath(__file__ ))
-path += "/../images/rishi.jpeg"
+path += "/../images/rishi1.jpg"
 im = Image.open(path)
 #im.show()
 
