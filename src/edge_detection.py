@@ -19,7 +19,8 @@ def rotateImage(img, angle):
 
 def cropImage(img):
     global edges
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    #gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    gray = img
     _,thresh = cv2.threshold(gray,70,255,cv2.THRESH_BINARY)
     contours = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     cnt = contours[0]
@@ -41,10 +42,10 @@ def applyThreshold(img, threshold):
     ret,thresh = cv2.threshold(singleChannel,threshold,255,cv2.THRESH_BINARY)
     return thresh
 
-def defuzzImage(img):
+def defuzzImage(img, iterations = 20, mode = cv2.MORPH_OPEN):
     kernel = np.ones((5,5),np.uint8)
     #NOTE: I just picked 5 iterations here because it seems to be the smallest number that works on a random picture of rishi's hand...
-    return cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel, iterations=5)
+    return cv2.morphologyEx(img, mode, kernel, iterations=iterations)
 
 # Returns an np array containing the xy points of the knuckles
 def getKnuckles(img):
@@ -96,16 +97,69 @@ def getContourPoints(cnt):
                 points.append([x,y])
     return np.array(points)
 
-path = os.path.dirname(os.path.abspath(__file__ ))
-path += "/../images/" + sys.argv[1]
+def findWristPoint(averages):
+    if (len(averages) == 1):
+        print("One size array")
+        return 0
+    elif (len(averages) == 2):
+        print("Two size array")
+        return 0 if averages[0] < averages[1] else 1
+    else:
+        mid = len(averages) / 2
+        if (averages[mid] < averages[mid - 1]):
+            if (averages[mid] < averages[mid + 1]):
+                return mid
+            else:
+                # recurse on right half of array
+                return mid + findWristPoint(averages[mid + 1:]) + 1
+        else:
+            # recurse on left half of array
+            return findWristPoint(averages[:mid])
+
+# TODO: Remove this method and compute averages in findWristPoint
+def getThicknesses(img):
+    WINDOW_SIZE = 10
+    print("Length", len(img))
+    averages = []
+    for row in img:
+        if (len(averages) < WINDOW_SIZE):
+            averages.append(row.mean())
+        else:
+            sum = 0
+            for i in range(len(averages) - WINDOW_SIZE, len(averages) - 1):
+                sum += averages[i]
+            sum += row.mean()
+            averages.append(sum / WINDOW_SIZE)
+
+        #averages.append(row.mean())
+    return averages
+
+
+def removeWrist(img):
+    DOWNSAMPLE_AMOUNT = 2
+    rows,cols,_ = img.shape
+    defuzzedImg = defuzzImage(img)
+    thresh = applyThreshold(defuzzedImg, 10)
+    thresh = cv2.pyrDown(thresh, dstsize = (cols / DOWNSAMPLE_AMOUNT, rows / DOWNSAMPLE_AMOUNT))
+    thicknesses = getThicknesses(thresh)
+    wristPoint = findWristPoint(thicknesses)
+    print("min", thicknesses[wristPoint], thicknesses[wristPoint + 1], thicknesses[wristPoint - 1])
+    cv2.line(img, (0, wristPoint), (img.shape[1], wristPoint), [0, 255, 0], 5)
+    return img
+
+basePath = os.path.dirname(os.path.abspath(__file__ ))
+path = basePath + "/../images/" + sys.argv[1]
 img = cv2.imread(path)
+background = cv2.imread(basePath + "/../images/empty_box.jpg")
+bgRemoved = applyThreshold(background - img, 50)
 
 plt.subplot(221),plt.imshow(img, cmap = 'gray')
 plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-croppedImage = cropImage(img)
-croppedImage = normalizeImage(croppedImage)
-plt.subplot(222),plt.imshow(edges, cmap="gray")
-plt.title("Countour"),plt.xticks([]), plt.yticks([])
+croppedImage = cropImage(bgRemoved)
+#croppedImage = removeWrist(croppedImage)
+#croppedImage = normalizeImage(croppedImage)
+plt.subplot(222),plt.imshow(bgRemoved, cmap="gray")
+plt.title("Bg Removed"),plt.xticks([]), plt.yticks([])
 plt.subplot(223),plt.imshow(croppedImage,cmap = 'gray')
 plt.title('Cropped Image'), plt.xticks([]), plt.yticks([])
 
