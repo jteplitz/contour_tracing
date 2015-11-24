@@ -20,10 +20,15 @@ colors = [(255,0,0), (100,149,237), (0,255,255), (34,139,34), (255,127,36)]
 dist_threshold = 500
 
 # DATA
-veins = [] # LIST OF VEINS WHERE EACH VEIN IS A LIST OF SEGMENTS CONSTITUTING VEIN
+rand_veins = [] # LIST OF VEINS WHERE EACH VEIN IS A LIST OF SEGMENTS CONSTITUTING VEIN
 vein_features = {}
 vein_features['intersections'] = {} # STORED AS VEIN_ID MAP TO (VEIN_ID, (INTERSECTION.X, INTERSECTION.Y), ANGLE, ANGLE_SUPPLEMENTARY)
 vein_features['intersection_distances'] = {} 
+
+# BUCKETING
+point_buckets = 40
+angle_buckets = 40
+distance_buckets = 40
 
 def dot(vA, vB):
     return vA[0]*vB[0]+vA[1]*vB[1]
@@ -65,14 +70,14 @@ def generateRandomVeins():
 			lines.append(((start_x_val, start_y_val), (end_x_val, end_y_val)))
 			start_x_val = end_x_val
 			start_y_val = end_y_val
-		veins.append(lines)
+		rand_veins.append(lines)
 
-	for vein in veins:
+	for vein in rand_veins:
 		cv2.circle(out_img, (vein[0][0][0], vein[0][0][1]), 10, (255,255,0), -1)
 		for index, line in enumerate(vein):
-			cv2.line(out_img, (line[0][0],line[0][1]), (line[1][0], line[1][1]), colors[index], 2)
+			cv2.line(out_img, (line[0][0],line[0][1]), (line[1][0], line[1][1]), colors[index], 3)
 
-def extractIntersections():
+def extractIntersections(veins):
 	for index, vein in enumerate(veins):
 		for index2, vein2 in enumerate(veins):
 			if set(vein) != set(vein2):
@@ -84,8 +89,11 @@ def extractIntersections():
 						if not intersection.is_empty:
 							if index not in vein_features['intersections']:
 								vein_features['intersections'][index] = []
-							angle = ang(line, line2)
-							vein_features['intersections'][index].append((index2, (int(intersection.x), int(intersection.y)), angle, 180 - angle))
+							angle = int(ang(line, line2)) % angle_buckets
+							supp_angle = (180 - angle) % angle_buckets
+							x_point = int(intersection.x) % point_buckets
+							y_point = int(intersection.y) % point_buckets
+							vein_features['intersections'][index].append((index2, (x_point, y_point), angle, supp_angle))
 							cv2.circle(out_img, (int(intersection.x), int(intersection.y)), 5, (255,245,238), -1)
 
 def extractIntersectionDistances():
@@ -100,13 +108,13 @@ def extractIntersectionDistances():
 					if intersection_point != intersection2_point:					
 						a = np.array(intersection_point)
 						b = np.array(intersection2_point)
-						dist = np.linalg.norm(a-b)
+						dist = int(np.linalg.norm(a-b)) % distance_buckets
 						if (intersection_endpoints, intersection_point) not in vein_features['intersection_distances']:
 							vein_features['intersection_distances'][(intersection_endpoints, intersection_point)] = {}
 						vein_features['intersection_distances'][(intersection_endpoints, intersection_point)][(intersection2_endpoints, intersection2_point)] = dist
 
 generateRandomVeins()
-extractIntersections()
+extractIntersections(rand_veins)
 extractIntersectionDistances()
 pprint(vein_features)
 
