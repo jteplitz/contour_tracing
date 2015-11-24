@@ -1,7 +1,12 @@
-function edgelist = feature_extract(filename)
+function segmented_edgelist = feature_extract(filename)
 %% Load Hand
 image = imread(filename);
-img_gray = rgb2gray(image);
+if(ndims(image) > 2)    
+    img_gray = rgb2gray(image);
+else
+    img_gray = image;
+end
+
 fil_img = uint8(imfilter(double(img_gray), ones(20) / 400, 'replicate'));
 
 %% TEMPORARY CROPPING
@@ -34,18 +39,18 @@ for i = 1:size(fil,1)
     [ymax,imax,ymin,imin] = extrema(smooth(fil(i,:), 9)); % previously 10
     y_len = length(imin);
     y = ones(1,y_len) * i;
-    plot(imin,y,'g*', 'markers',3)
+    plot(imin,y,'g*', 'markers',1)
     
     vein_x_img(sub2ind(size(vein_x_img), y', imin)) = 1;
 end
 
 % Local minima for columns
-% for i = 1:size(fil,2)
-%     [ymax,imax,ymin,imin] = extrema(smooth(fil(:,i), 50));
-%     y_len = size(imin,2);
-%     y = ones(1,y_len) * i;
-%     plot(y,imin,'r*', 'markers',3)
-% end
+for i = 1:size(fil,2)
+    [ymax,imax,ymin,imin] = extrema(smooth(fil(:,i), 50));
+    y_len = size(imin,2);
+    y = ones(1,y_len) * i;
+    plot(y,imin,'r*', 'markers',1)
+end
 
 % Voting to remove isolated points
 copy = vein_x_img(:,:);
