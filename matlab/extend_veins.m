@@ -52,6 +52,8 @@ function connected_edgelist = extend_veins(edgelist)
        end
     end
     
+    edgelist = connected_edgelist;
+    
     % Extend segments to find intersections
 
 end
