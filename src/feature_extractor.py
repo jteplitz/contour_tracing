@@ -14,13 +14,13 @@ img = cv2.imread(path)
 out_img = np.zeros((img.shape[0], img.shape[1], 3), np.uint8)
 
 # PARAMETERS
-num_rand_lines = 5
-num_lines_per_segment = 5
+num_rand_lines = 3
+num_lines_per_segment = 3
 colors = [(255,0,0), (100,149,237), (0,255,255), (34,139,34), (255,127,36)]
-dist_threshold = 100
+dist_threshold = 500
 
 # DATA
-veins = []
+veins = [] # LIST OF VEINS WHERE EACH VEIN IS A LIST OF SEGMENTS CONSTITUTING VEIN
 vein_features = {}
 vein_features['intersections'] = {} # STORED AS VEIN_ID MAP TO (VEIN_ID, (INTERSECTION.X, INTERSECTION.Y), ANGLE, ANGLE_SUPPLEMENTARY)
 vein_features['intersection_distances'] = {} 
@@ -52,13 +52,13 @@ def ang(lineA, lineB):
 def generateRandomVeins():
 	for line in range(0, num_rand_lines):
 		lines = []
-		start_x_val = random.randint(0, img.shape[0])
-		start_y_val = random.randint(0, img.shape[1])
+		start_x_val = random.randint(0, out_img.shape[1])
+		start_y_val = random.randint(0, out_img.shape[0])
 		for line in range(0, num_lines_per_segment):
 			dist = dist_threshold + 1
 			while dist > dist_threshold:
-				end_x_val = random.randint(0, img.shape[0])
-				end_y_val = random.randint(0, img.shape[1])
+				end_x_val = random.randint(0, out_img.shape[1])
+				end_y_val = random.randint(0, out_img.shape[0])
 				a = np.array((start_x_val, start_y_val))
 				b = np.array((end_x_val, end_y_val))
 				dist = np.linalg.norm(a-b)
@@ -66,12 +66,11 @@ def generateRandomVeins():
 			start_x_val = end_x_val
 			start_y_val = end_y_val
 		veins.append(lines)
-	print len(veins)
 
 	for vein in veins:
-		cv2.circle(out_img, (vein[0][0][1], vein[0][0][0]), 10, (255,255,0), -1)
+		cv2.circle(out_img, (vein[0][0][0], vein[0][0][1]), 10, (255,255,0), -1)
 		for index, line in enumerate(vein):
-			cv2.line(out_img, (line[0][1],line[0][0]), (line[1][1], line[1][0]), colors[index], 2)
+			cv2.line(out_img, (line[0][0],line[0][1]), (line[1][0], line[1][1]), colors[index], 2)
 
 def extractIntersections():
 	for index, vein in enumerate(veins):
@@ -86,32 +85,23 @@ def extractIntersections():
 							if index not in vein_features['intersections']:
 								vein_features['intersections'][index] = []
 							angle = ang(line, line2)
-							print angle
-							vein_features['intersections'][index].append((index2, (int(intersection.y), int(intersection.x)), angle, 180 - angle))
-							cv2.circle(out_img, (int(intersection.y), int(intersection.x)), 5, (255,245,238), -1)
+							vein_features['intersections'][index].append((index2, (int(intersection.x), int(intersection.y)), angle, 180 - angle))
+							cv2.circle(out_img, (int(intersection.x), int(intersection.y)), 5, (255,245,238), -1)
 
 def extractIntersectionDistances():
 	for v_id, intersections in vein_features['intersections'].iteritems():
 		for intersection in intersections:
 			intersection_endpoints = (v_id, intersection[0])
 			intersection_point = intersection[1]
-			print '\n'
-			print intersection_endpoints
 			for v_id2, intersections2 in vein_features['intersections'].iteritems():
 				for intersection2 in intersections2:
-			# 		# if v_id2 != intersection2[0] and (v_id == v_id2 and intersection[0] != intersection2[0] or v_id != v_id2):
 					intersection2_endpoints = (v_id2, intersection2[0])
 					intersection2_point = intersection2[1]
-					print intersection2_endpoints
-
 					if intersection_point != intersection2_point:					
 						a = np.array(intersection_point)
 						b = np.array(intersection2_point)
 						dist = np.linalg.norm(a-b)
-						print intersection2_endpoints
-
 						if (intersection_endpoints, intersection_point) not in vein_features['intersection_distances']:
-							print intersection2_endpoints
 							vein_features['intersection_distances'][(intersection_endpoints, intersection_point)] = {}
 						vein_features['intersection_distances'][(intersection_endpoints, intersection_point)][(intersection2_endpoints, intersection2_point)] = dist
 
@@ -121,8 +111,8 @@ extractIntersectionDistances()
 pprint(vein_features)
 
 plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
-plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-# plt.show()
+plt.title('Vein features'), plt.xticks([]), plt.yticks([])
+plt.show()
 
 
 
