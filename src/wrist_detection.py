@@ -88,21 +88,21 @@ def findWrist(contour):
 			else:
 				derivatives.append(pt2[0] - pt1[0])
 
-	wrong_val = max(abs(v) for v in derivatives)
-	val = max(abs(v) for v in derivatives if abs(v) != wrong_val)
+	thresh = 100
+	# wrong_val = max(abs(v) for v in derivatives)
+	# wrong_val_2 = max(abs(v) for v in derivatives if abs(v) != wrong_val and abs(v) < thresh)
+	# val = max(abs(v) for v in derivatives if abs(v) != wrong_val_2 and abs(v) < thresh)
+	val = max(abs(v) for v in derivatives if  abs(v) < thresh)
 	index = -1
 	if val not in derivatives:
 		index = derivatives.index(-1 * val)
 	else:
 		index = derivatives.index(val)
-	# index += 650
 	print val
 	print flattened_selected_contour_pts[index-1]
 	print flattened_selected_contour_pts[index]
 	print flattened_selected_contour_pts[index+1]
 	cv2.line(out_img, (flattened_selected_contour_pts[index][0], flattened_selected_contour_pts[index][1]), (0, flattened_selected_contour_pts[index][1]), colors[2], 5)
-	
-
 	global out_img_2
 	out_img_2 = img[flattened_selected_contour_pts[index][1]:img.shape[0], 0:img.shape[1]]
 	# x_list = [pt[0] for pt in flattened_selected_contour_pts]
