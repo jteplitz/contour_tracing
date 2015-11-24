@@ -1,4 +1,7 @@
 function segmented_edgelist = feature_extract(filename)
+
+isOctave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
+
 %% Load Hand
 image = imread(filename);
 if(ndims(image) > 2)    
@@ -8,17 +11,6 @@ else
 end
 
 fil_img = uint8(imfilter(double(img_gray), ones(20) / 400, 'replicate'));
-
-%% TEMPORARY CROPPING
-
-% for rishi2.jpg
-% fil_img = fil_img(755:1214,998:1571);
-
-% for eyuel.jpg
-% fil_img = fil_img(884:1442,923:1478);
-
-% for open_hand.jpg
-% fil_img = fil_img(842:1253,1232:1715);
 
 %%
 x = (1:size(fil_img,2));
@@ -35,22 +27,30 @@ hold on
 % 
 % Local minima for rows
 for i = 1:size(fil,1)
-%     [ymax,imax,ymin,imin] = extrema(smooth(fil(i,:), 9)); % previously 10
-    [ymax,imax,ymin,imin] = extrema(smooth(fil(i,:), 9)); % previously 10
+    if (isOctave)
+        [ymax,imax,ymin,imin] = extrema(octave_smooth(fil(i,:), 9)); % previously 10
+    else
+        [ymax,imax,ymin,imin] = extrema(smooth(fil(i,:), 9)); % previously 10
+    end
+    
     y_len = length(imin);
     y = ones(1,y_len) * i;
     plot(imin,y,'g*', 'markers',1)
     
-    vein_x_img(sub2ind(size(vein_x_img), y', imin)) = 1;
+    if (isOctave)
+        vein_x_img(sub2ind(size(vein_x_img), y', imin')) = 1;
+    else
+        vein_x_img(sub2ind(size(vein_x_img), y', imin)) = 1;
+    end
 end
 
 % Local minima for columns
-for i = 1:size(fil,2)
-    [ymax,imax,ymin,imin] = extrema(smooth(fil(:,i), 50));
-    y_len = size(imin,2);
-    y = ones(1,y_len) * i;
-    plot(y,imin,'r*', 'markers',1)
-end
+% for i = 1:size(fil,2)
+%     [ymax,imax,ymin,imin] = extrema(smooth(fil(:,i), 50));
+%     y_len = size(imin,2);
+%     y = ones(1,y_len) * i;
+%     plot(y,imin,'r*', 'markers',1)
+% end
 
 % Voting to remove isolated points
 copy = vein_x_img(:,:);
