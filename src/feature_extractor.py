@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from shapely.geometry import LineString
 from pprint import pprint
 import math
+import util
 
 # SETUP
 path = os.path.dirname(os.path.abspath(__file__ ))
@@ -24,11 +25,15 @@ rand_veins = [] # LIST OF VEINS WHERE EACH VEIN IS A LIST OF SEGMENTS CONSTITUTI
 vein_features = {}
 vein_features['intersections'] = {} # STORED AS VEIN_ID MAP TO (VEIN_ID, (INTERSECTION.X, INTERSECTION.Y), ANGLE, ANGLE_SUPPLEMENTARY)
 vein_features['intersection_distances'] = {} 
+vein_features['fuzzy_grid_heatmap'] = {}
 
 # BUCKETING
 point_buckets = 40
 angle_buckets = 40
 distance_buckets = 40
+
+# GRID FUZZING
+fuzz_cell_dimension = 8
 
 def dot(vA, vB):
     return vA[0]*vB[0]+vA[1]*vB[1]
@@ -113,10 +118,41 @@ def extractIntersectionDistances():
 							vein_features['intersection_distances'][(intersection_endpoints, intersection_point)] = {}
 						vein_features['intersection_distances'][(intersection_endpoints, intersection_point)][(intersection2_endpoints, intersection2_point)] = dist
 
+def extractGrid(veins):
+	new_x = float(img.shape[1]) / float(fuzz_cell_dimension)
+	new_y = float(img.shape[0]) / float(fuzz_cell_dimension)
+	print img.shape[1], img.shape[0]
+	print new_x, new_y 
+	grid_old_to_new = {} # MAPPING OF OLD CELLS TO NEW CELLS, ACCESS AS 2D ARRAY
+	new_cell_counts = {} # MAPPING OF NEW CELLS TO COUNT OF VEIN OCCURRENCES PER CELL
+	for x in range(0, img.shape[1]):
+		for y in range(0, img.shape[0]):
+			new_x_cell = int(x / fuzz_cell_dimension)
+			new_y_cell = int(y / fuzz_cell_dimension)
+			new_x_cell_offset = x % fuzz_cell_dimension
+			new_y_cell_offset = y % fuzz_cell_dimension
+			if x not in grid_old_to_new:
+				grid_old_to_new[x] = {}
+			grid_old_to_new[x][y] = ((new_x_cell, new_y_cell), (new_x_cell_offset, new_y_cell_offset))
+			new_cell_counts[(new_x_cell, new_y_cell)] = 0
+
+	for vein in veins:
+		for line in vein:
+			points = util.get_line(line[0][0], line[0][1], line[1][0], line[1][1])
+			for point in points:
+				new_cell_tuple = grid_old_to_new[point[0]][point[1]]
+				new_cell = new_cell_tuple[0]
+				if new_cell not in new_cell_counts:
+					new_cell_counts[new_cell] = 0
+				new_cell_counts[new_cell] += 1
+	vein_features['fuzzy_grid_heatmap'] = new_cell_counts
+
+
 generateRandomVeins()
 extractIntersections(rand_veins)
 extractIntersectionDistances()
-pprint(vein_features)
+extractGrid(rand_veins)
+# pprint(vein_features)
 
 plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
 plt.title('Vein features'), plt.xticks([]), plt.yticks([])
