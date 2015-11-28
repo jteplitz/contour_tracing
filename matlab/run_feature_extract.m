@@ -11,6 +11,7 @@ edgelist = feature_extract(strcat(path, fileList{1}))
 %%
 T = profile("info");
 profshow(T)
+%profexplore(T)
 
 new_edgelist = extend_veins(edgelist);
 

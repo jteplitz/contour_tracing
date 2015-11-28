@@ -21,29 +21,15 @@ vein_x_img = zeros(size(fil, 1), size(fil, 2));
 
 %%
 figure
-subplot(2,2,4)
+%subplot(2,2,4)
 imshow(fil_img);
 hold on
-% 
-% Local minima for rows
-for i = 1:size(fil,1)
-    if (isOctave)
-        [ymax,imax,ymin,imin] = extrema(cpp_smooth(fil(i,:), 9)); % previously 10
-    else
-        [ymax,imax,ymin,imin] = extrema(smooth(fil(i,:), 9)); % previously 10
-    end
-    
-    y_len = length(imin);
-    y = ones(1,y_len) * i;
-    plot(imin,y,'g*', 'markers',1)
-    
-    if (isOctave)
-        vein_x_img(sub2ind(size(vein_x_img), y', imin')) = 1;
-    else
-        vein_x_img(sub2ind(size(vein_x_img), y', imin)) = 1;
-    end
-end
 
+vein_x_img = find_minima(isOctave, fil, vein_x_img);
+%copy = vote(vein_x_img);
+copy = cpp_vote(vein_x_img);
+
+% 
 % Local minima for columns
 % for i = 1:size(fil,2)
 %     [ymax,imax,ymin,imin] = extrema(smooth(fil(:,i), 50));
@@ -52,26 +38,12 @@ end
 %     plot(y,imin,'r*', 'markers',1)
 % end
 
-% Voting to remove isolated points
-copy = vein_x_img(:,:);
-for i = 2:size(vein_x_img, 1)-1
-    for j = 2:size(vein_x_img,2)-1
-        sel = (vein_x_img(i-1:i+1,j-1:j+1));
-        selSum = sum(sel(:));
-        if (selSum > 1)
-            copy(i,j) = 1;
-        else
-            copy(i,j) = 0;
-        end
-    end
-end
-
 % remove the junk on the left and right edges
 copy(:,end-5:end) = 0;
 copy(:,1:5) = 0;
 
-subplot(2,2,1)
-imshow(copy)
+%subplot(2,2,1)
+%imshow(copy)
 
 % remove connected components consisting of <20 pixels
 isolated_removed = bwareaopen(copy, 20);
@@ -82,10 +54,10 @@ segmented_edgelist = lineseg(edgelist, 3); % previously 5
 % drawedgelist(edgelist, ssize(isolated_removed), 1, 'rand', 2);
 drawedgelist(segmented_edgelist, size(isolated_removed), 1, 'rand');
 
-subplot(2,2,2)
+%subplot(2,2,2)
 imshow(edgelist2image(edgelist));
 
-subplot(2,2,3)
+%subplot(2,2,3)
 drawedgelist(segmented_edgelist, size(isolated_removed), 1, 'rand');
 
 end
