@@ -28,7 +28,7 @@ hold on
 % Local minima for rows
 for i = 1:size(fil,1)
     if (isOctave)
-        [ymax,imax,ymin,imin] = extrema(octave_smooth(fil(i,:), 9)); % previously 10
+        [ymax,imax,ymin,imin] = extrema(cpp_smooth(fil(i,:), 9)); % previously 10
     else
         [ymax,imax,ymin,imin] = extrema(smooth(fil(i,:), 9)); % previously 10
     end
