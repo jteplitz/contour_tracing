@@ -36,7 +36,9 @@ def findWrist(contour):
 	top_base = int(img.shape[0] * 0.25) # ESTIMATE STARTING Y
 	bottom_base = int(img.shape[0] * 0.75) # ESTIMATE ENDING Y
 
-	# selected_contour_pts = [i for i in contour if i[0][1] < bottom_base and i[0][1] > top_base and i[0][0] > left_base]
+	top_base_sensitivity = 1
+	top_base_bounds = range(top_base-top_base_sensitivity, top_base+top_base_sensitivity+1)
+
 	selected_contour_pts = [i for i in contour if i[0][1] <= bottom_base and i[0][1] >= top_base]
 	flattened_selected_contour_pts_verbose = [item for sublist in selected_contour_pts for item in sublist]
 	flattened_selected_contour_pts = flattened_selected_contour_pts_verbose[::2]
@@ -50,7 +52,7 @@ def findWrist(contour):
 			else:
 				derivatives.append(pt2[0] - pt1[0])
 
-	found = [i for i, pt in enumerate(flattened_selected_contour_pts) if pt[1] == top_base]
+	found = [i for i, pt in enumerate(flattened_selected_contour_pts) if pt[1] in top_base_bounds]
 	min_val = None
 	max_val = None
 	for index in found:
@@ -58,18 +60,19 @@ def findWrist(contour):
 			min_val = flattened_selected_contour_pts[index][0]
 		if max_val is None or flattened_selected_contour_pts[index][0] > max_val:
 			max_val = flattened_selected_contour_pts[index][0]
-	thresh = (min_val + max_val) / 2
+	thresh = ((min_val + max_val) / 2) - min_val
 	print 'DERIVATIVE THRESHOLD: %d' % thresh
 
-	val = max(abs(v) for v in derivatives if abs(v) < thresh)
-	index = -1
-	if val not in derivatives:
-		index = derivatives.index(-1 * val)
-	else:
-		index = derivatives.index(val)
-	cv2.line(out_img, (flattened_selected_contour_pts[index][0], flattened_selected_contour_pts[index][1]), (0, flattened_selected_contour_pts[index][1]), colors[2], 5)
+	dv_val = max(abs(v) for v in derivatives if abs(v) < thresh)
+	dv_sensitivity = 1
+	dv_val_bounds = range(dv_val-dv_sensitivity, dv_val+dv_sensitivity+1)
+	potentials = [flattened_selected_contour_pts[i] for i, j in enumerate(derivatives) if abs(j) in dv_val_bounds]
+	np_potentials = np.array(potentials)
+	median_y = int(np.median(np_potentials, axis=0)[1])
+	print 'Y CUTOFF: %d' % median_y
+	cv2.line(out_img, (0, median_y), (img.shape[1], median_y), colors[2], 5)	
 	global out_img_2
-	out_img_2 = img[flattened_selected_contour_pts[index][1]:img.shape[0], 0:img.shape[1]]
+	out_img_2 = img[median_y:img.shape[0], 0:img.shape[1]]
 
 
 generateHandContour()
