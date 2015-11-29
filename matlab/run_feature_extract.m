@@ -14,7 +14,8 @@ profshow(T)
 %profexplore(T)
 
 new_edgelist = extend_veins(edgelist);
-
+figure
+drawedgelist(new_edgelist, [0,0], 1, 'rand')
 %%
 %for fileNum = 1:length(fileList)
 %    edgelist = feature_extract(strcat(path, fileList{fileNum}))
