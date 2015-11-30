@@ -1,6 +1,6 @@
 function edgelist = extend_veins(edgelist)
 
-    LENGTH_THRESHOLD = 30;
+    LENGTH_THRESHOLD = 60;
     PROXIMITY_MERGE_THRESHOLD = 5;
     PROXIMITY_MERGE_SLOPE_THRESHOLD = 0.1;
     EXTENSION_STEP_SIZE = 10;
@@ -78,9 +78,11 @@ function edgelist = extend_veins(edgelist)
             bottom_end      = top_start;
         else
             top_start       = cur_seg(1,:);
-            top_end         = cur_seg(3,:);
+%             top_end         = cur_seg(3,:);
+            top_end         = cur_seg(end,:);
             bottom_start    = cur_seg(end,:);
-            bottom_end      = cur_seg(end-2,:);
+%             bottom_end      = cur_seg(end-2,:);
+            bottom_end      = cur_seg(1,:);
         end
 
         % For both top and bottom extensions, compute the angle between the
