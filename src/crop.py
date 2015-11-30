@@ -1,7 +1,6 @@
 import os
 import sys
 import math
-from matplotlib import pyplot as plt
 import numpy as np
 import cv2
 
@@ -65,7 +64,6 @@ def cropAtBoundingBox(img, mask):
         if firstZero < left:
             left = firstZero
 
-    print(top, left)
     return img[0: top, left: img.shape[1] - 1], mask[0: top, left: mask.shape[1] - 1]
 
 def applyMask(img, mask):
@@ -77,7 +75,11 @@ def applyMask(img, mask):
     return output
 
 def getContour(mask):
-    return cv2.findContour(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if (len(contours) > 1):
+        return max(contours, key=lambda c: cv2.contourArea(c))
+    else:
+        return contours[0]
 
 def cropImg(path):
     img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)
@@ -92,7 +94,6 @@ def cropImg(path):
     croppedImg = croppedImg[wristY:croppedImg.shape[0]]
     finalImg, mask = cropAtBoundingBox(croppedImg, mask)
     mask = mask[0:mask.shape[0], 1: mask.shape[1] - 1]
-    print(mask.shape, finalImg.shape)
     finalImg = applyMask(finalImg, mask)
 
     #cv2.imwrite(basePath + "/../images/roi/" + sys.argv[1], croppedImg)
