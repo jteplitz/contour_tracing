@@ -15,8 +15,14 @@ function vein_img = find_minima(isOctave, fil, vein_img)
       end
       
       data_inv = 1.01*max(data) - data;
-      [~, imin, widths, prominences] = findpeaks(data_inv);
-      
+
+      if (isOctave)
+        [~, imin, extra] = findpeaks(data_inv(:));
+        prominences = extra.height;
+      else
+        [~, imin, widths, prominences] = findpeaks(data_inv);
+      end
+
       y_len = length(imin);
       y = ones(1,y_len) * i;
       

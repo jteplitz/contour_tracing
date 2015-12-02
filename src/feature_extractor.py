@@ -2,7 +2,7 @@ import os, sys
 import cv2
 import numpy as np
 import random
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 from shapely.geometry import LineString
 from pprint import pprint
 import util
@@ -163,9 +163,9 @@ def upDowns(fuzzy_grid_heatmap):
 		while next_pt in fuzzy_grid_heatmap.keys():
 			start_val = fuzzy_grid_heatmap[start_pt]
 			next_val = fuzzy_grid_heatmap[next_pt]
-			if start_val == 1:
+			if start_val <= 2:
 				start_val = 0
-			if next_val == 1:
+			if next_val <= 2:
 				next_val = 0
 			ud.append(start_val < next_val)
 			start_pt = next_pt
@@ -301,10 +301,10 @@ def bvgFeatureExtractor(bvg_file, index=None,
 			print 'Key: %s : %s' % (key, ', '.join(str(i) for i in val))
 	if index is not None:
 		grid = int('22' + str(index))
-		plt.subplot(grid),plt.imshow(out_img, cmap = 'gray')
-	else:
-		plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
-	plt.title(str(index) + '. features'), plt.xticks([]), plt.yticks([])
+		#plt.subplot(grid),plt.imshow(out_img, cmap = 'gray')
+	#else:
+		#plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
+	#plt.title(str(index) + '. features'), plt.xticks([]), plt.yticks([])
 	
 
 if __name__ == '__main__':
@@ -329,12 +329,4 @@ if __name__ == '__main__':
 		file = path + '/' + args.file
 		bvgFeatureExtractor(file, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, midpoint_veins=True, print_advanced_features=True)
 
-	plt.show()
-	
-	
-
-
-
-
-
-
+	#plt.show()

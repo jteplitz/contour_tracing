@@ -1,4 +1,10 @@
-arglist = argv()
-print(arglist)
+pkg load signal
+pkg load image
+pkg load statistics
 
-runMagic(argv[0], argv[1])
+
+addpath("/home/pi/contour_tracing/matlab")
+
+arglist = argv();
+
+do_bvg(arglist{1}, arglist{2});

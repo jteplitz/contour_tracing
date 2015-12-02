@@ -3,6 +3,7 @@ import time
 import subprocess
 from crop import cropImg
 import cv2
+from feature_extractor import bvgFeatureExtractor
 
 BASE_PATH = "/home/pi/bvg_data"
 
@@ -31,7 +32,12 @@ while True:
         croppedImg = cropImg(filePath)
         croppedFilePath = BASE_PATH + "/cropped_images/" + fileName
         cv2.imwrite(croppedFilePath, croppedImg)
+        print(croppedFilePath)
         print("Image cropped")
         featureFilePath = BASE_PATH + "/features/" + fileName[:-4] + ".csv"
-        subprocess.call(["octave", "../matlab/extract_features.m", croppedFilePath, featureFilePath])
+        command = ["octave", "/home/pi/contour_tracing/matlab/extract_features.m", croppedFilePath, featureFilePath]
+        command = " ".join(command)
+        subprocess.call("/bin/su - pi -c \"" + command + "\"", shell = True)
+        print("Feature file created")
+        bvgFeatureExtractor(featureFilePath, intersections=False, fuzzy_grid=True, vein_angles=False, avg_angles=False, rishi_angles=False, up_down=True, print_advanced_features=True, midpoint_veins=True)
     time.sleep(DELAY)

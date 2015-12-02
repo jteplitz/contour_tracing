@@ -1,8 +1,10 @@
 import os
+#from matplotlib import pyplot as plt
 import sys
 import math
 import numpy as np
 import cv2
+import c_module_mask
 
 LEFT_SIDE = 870;
 RIGHT_SIDE = 1590;
@@ -66,6 +68,16 @@ def cropAtBoundingBox(img, mask):
 
     return img[0: top, left: img.shape[1] - 1], mask[0: top, left: mask.shape[1] - 1]
 
+def fixedCropFromWrist(img, mask, wristY):
+    IMAGE_SIZE = 480
+    y1 = wristY
+    y2 = wristY + IMAGE_SIZE
+    #x1 = (IMAGE_SIZE - img.shape[1]) / -2
+    #x2 = img.shape[1] - (IMAGE_SIZE - img.shape[1]) / -2
+    x1 = img.shape[1] - IMAGE_SIZE
+    x2 = img.shape[1]
+    return img[y1:y2, x1:x2],mask[y1:y2, x1:x2]
+
 def applyMask(img, mask):
     output = np.zeros(img.shape)
     for i,row in enumerate(mask):
@@ -90,11 +102,25 @@ def cropImg(path):
     wristY = findWrist(contour)
 
     # Crop the mask and the image at the wrist
-    mask = mask[wristY:mask.shape[0]]
-    croppedImg = croppedImg[wristY:croppedImg.shape[0]]
-    finalImg, mask = cropAtBoundingBox(croppedImg, mask)
-    mask = mask[0:mask.shape[0], 1: mask.shape[1] - 1]
-    finalImg = applyMask(finalImg, mask)
+    #mask = mask[wristY:mask.shape[0]]
+    #croppedImg = croppedImg[wristY:croppedImg.shape[0]]
+    #finalImg, mask = cropAtBoundingBox(croppedImg, mask)
+    finalImg,mask = fixedCropFromWrist(croppedImg, mask, wristY)
+    #mask = mask[0:mask.shape[0], 1: mask.shape[1] - 1]
+    #finalImg = applyMask(finalImg, mask)
+    #finalImg = c_module_mask.c_apply_mask(finalImg, mask)
+    finalImg = np.multiply(finalImg, np.logical_not(mask))
+    #finalImg = np.bitwise_and(finalImg, cv2.bit
+    #plt.subplot(221),plt.imshow(croppedImg, cmap = 'gray')
+    #plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    #plt.subplot(222),plt.imshow(mask, cmap = 'gray')
+    #plt.title('Mask'), plt.xticks([]), plt.yticks([])
+    #plt.subplot(223),plt.imshow(finalImg, cmap = 'gray')
+    #plt.title('Cropped Image'), plt.xticks([]), plt.yticks([])
+    #
+    #plt.show()
 
-    #cv2.imwrite(basePath + "/../images/roi/" + sys.argv[1], croppedImg)
+    #cv2.imwrite(sys.argv[1] + ".roi", croppedImg)
     return finalImg
+
+#cropImg(sys.argv[1])

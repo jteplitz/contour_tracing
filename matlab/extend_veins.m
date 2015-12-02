@@ -32,7 +32,7 @@ function edgelist = extend_veins(edgelist, img_size)
                 
                 slope_diff  = abs(i_slope - j_slope);
                 if (pdist2(i_end, j_start) < PROXIMITY_MERGE_THRESHOLD)
-                    if (slope_diff < PROXIMITY_MERGE_SLOPE_THRESHOLD || pdist2(i_end, j_start) < 2 || poly_poly_dist(edgelist{j}(:,2), edgelist{j}(:,1), edgelist{i}(:,2), edgelist{i}(:,1)) < 10)
+                    if (slope_diff < PROXIMITY_MERGE_SLOPE_THRESHOLD || pdist2(i_end, j_start) < 2)
                         new_edgelist(i) = {[new_edgelist{i}; new_edgelist{j}]};
                         new_edgelist(j) = {-1};
                     end
