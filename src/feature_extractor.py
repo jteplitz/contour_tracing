@@ -10,10 +10,6 @@ import parser
 import argparse
 import math
 
-# SETUP
-
-# img = cv2.imread(path)
-
 # PARAMETERS
 num_rand_lines = 3
 num_lines_per_segment = 3
@@ -27,14 +23,20 @@ vein_features['intersection_distances'] = {}
 vein_features['fuzzy_grid_heatmap'] = {}
 vein_features['veins'] = {}
 
+advanced_vein_features = {}
+advanced_vein_features['avg_angles'] = []
+advanced_vein_features['rishi_angles'] = []
+advanced_vein_features['up_down'] = []
+
 # BUCKETING
 point_buckets = 40
-intersection_angle_buckets = 40
+intersection_angle_buckets = 4
 distance_buckets = 40
-vein_angle_buckets = 40
+vein_angle_buckets = 4
+advanced_angle_buckets = 4
 
 # GRID FUZZING
-# fuzz_cell_dimension = 5
+fuzz_cell_dimension = 3
 fuzz_cell_buckets = 2
 
 def generateRandomVeins(out_img):
@@ -77,12 +79,12 @@ def extractIntersections(veins, out_img):
 						if not intersection.is_empty:
 							if index not in vein_features['intersections']:
 								vein_features['intersections'][index] = []
-							angle = int(util.ang(line, line2)) % intersection_angle_buckets
-							supp_angle = (180 - angle) % intersection_angle_buckets
-							x_point = int(intersection.x) % point_buckets
-							y_point = int(intersection.y) % point_buckets
+							angle = math.floor(util.ang(line, line2) / intersection_angle_buckets)
+							supp_angle = math.floor((180 - angle) / intersection_angle_buckets)
+							x_point = int(math.floor(intersection.x)) % point_buckets
+							y_point = int(math.floor(intersection.y)) % point_buckets
 							vein_features['intersections'][index].append((index2, (x_point, y_point), angle, supp_angle))
-							cv2.circle(out_img, (int(intersection.x), int(intersection.y)), 2, (255,245,238), -1)
+							cv2.circle(out_img, (int(math.floor(intersection.x)), int(math.floor(intersection.y))), 2, (255,245,238), -1)
 
 def extractIntersectionDistances():
 	for v_id, intersections in vein_features['intersections'].iteritems():
@@ -96,39 +98,28 @@ def extractIntersectionDistances():
 					if intersection_point != intersection2_point:					
 						a = np.array(intersection_point)
 						b = np.array(intersection2_point)
-						dist = int(np.linalg.norm(a-b)) % distance_buckets
+						dist = int(math.floor(np.linalg.norm(a-b))) % distance_buckets
 						if (intersection_endpoints, intersection_point) not in vein_features['intersection_distances']:
 							vein_features['intersection_distances'][(intersection_endpoints, intersection_point)] = {}
 						vein_features['intersection_distances'][(intersection_endpoints, intersection_point)][(intersection2_endpoints, intersection2_point)] = dist
 
-def extractGrid(veins, out_img, fuzz_cell_dimension):
-	new_x = float(out_img.shape[1]) / float(fuzz_cell_dimension)
-	new_y = float(out_img.shape[0]) / float(fuzz_cell_dimension)
-	print out_img.shape[1], out_img.shape[0]
-	print new_x, new_y 
+def extractGrid(veins, out_img, fuzz_cell_scale, drawLines=False):
+	new_x = float(out_img.shape[1]) / float(fuzz_cell_scale)
+	new_y = float(out_img.shape[0]) / float(fuzz_cell_scale)
 	grid_old_to_new = {} # MAPPING OF OLD CELLS TO NEW CELLS, ACCESS AS 2D ARRAY
 	new_cell_counts = {} # MAPPING OF NEW CELLS TO COUNT OF VEIN OCCURRENCES PER CELL
 	print 'VEINS! %d' % len(veins)
 
 	for x in range(1, out_img.shape[1]+1):
 		for y in range(1, out_img.shape[0]+1):
-			new_x_cell = math.floor(float(x) / float(fuzz_cell_dimension))
-			new_y_cell = math.floor(float(y) / float(fuzz_cell_dimension))
-
-			cv2.line(out_img, (int(new_x_cell*fuzz_cell_dimension),0), (int(new_x_cell*fuzz_cell_dimension), out_img.shape[0]), colors[4], 1)
-			cv2.line(out_img, (0,int(new_y_cell*fuzz_cell_dimension)), (out_img.shape[1], int(new_y_cell*fuzz_cell_dimension)), colors[4], 1)
-			
-			# new_x_cell_offset = x % fuzz_cell_dimension
-			# if new_x_cell_offset == 0:
-			# 	new_x_cell_offset = fuzz_cell_dimension
-			# new_y_cell_offset = y % fuzz_cell_dimension
-			# if new_y_cell_offset == 0:
-			# 	new_y_cell_offset = fuzz_cell_dimension
-
+			new_x_cell = math.floor(float(x) / float(fuzz_cell_scale))
+			new_y_cell = math.floor(float(y) / float(fuzz_cell_scale))
+			if drawLines:
+				cv2.line(out_img, (int(new_x_cell*fuzz_cell_scale),0), (int(new_x_cell*fuzz_cell_scale), out_img.shape[0]), colors[4], 1)
+				cv2.line(out_img, (0,int(new_y_cell*fuzz_cell_scale)), (out_img.shape[1], int(new_y_cell*fuzz_cell_scale)), colors[4], 1)
 			if x not in grid_old_to_new:
 				grid_old_to_new[x] = {}
 			grid_old_to_new[x][y] = (new_x_cell, new_y_cell)
-			# grid_old_to_new[x][y] = ((new_x_cell, new_y_cell), (new_x_cell_offset, new_y_cell_offset))
 			new_cell_counts[(new_x_cell, new_y_cell)] = 0
 
 	for vi, vein in enumerate(veins):
@@ -154,7 +145,7 @@ def extractVeinAngles(veins):
 				intersection = line_format.intersection(line_2_format)
 				if not intersection.is_empty:
 					# angle = int(util.ang(line, line2))
-					angle = int(util.ang(line, line2)) % vein_angle_buckets
+					angle = math.floor(util.ang(line, line2) / vein_angle_buckets)
 					if line not in vein_features['veins'][index]:
 						vein_features['veins'][index][line] = {}
 					vein_features['veins'][index][line][line2] = angle
@@ -171,67 +162,100 @@ def upDowns(fuzzy_grid_heatmap):
 		prev_val = val
 	return ud
 
-def bvgFeatureExtractor(bvg_file):
+def avgVeinAngles(vein_angles, buckets=False):
+	avg_vein_angles = []
+	for key, val in vein_angles.iteritems():
+		ang_sum = 0
+		count = 0
+		for key2, val2 in val.iteritems():
+			for key3, val3 in val2.iteritems():
+				ang_sum += val3
+				count+=1
+		if count == 0:
+			avg_vein_angles.append(0)
+		else:
+			ang = math.floor(ang_sum / count)
+			if buckets:
+				ang = math.floor((ang_sum / count) / advanced_angle_buckets)				
+			avg_vein_angles.append(ang)
+	return sorted(avg_vein_angles)
+
+def completeVeinAngles(veins, buckets=False):
+	complete_vein_angles = []
+	length = 50
+	for vein in veins:
+		first_point = vein[0][0]
+		last_point = vein[-1][1]
+		ang = math.floor(util.ang((first_point, last_point), (first_point, (first_point[0] + length, first_point[1]))))
+		if buckets:
+			ang = util.ang((first_point, last_point), (first_point, (first_point[0] + length, first_point[1])))
+			ang = math.floor(ang / advanced_angle_buckets)
+		complete_vein_angles.append(ang)
+	return sorted(complete_vein_angles)
+
+def bvgFeatureExtractor(bvg_file, index=None, 
+						intersections=False, fuzzy_grid=False, 
+						vein_angles=False, avg_angles=False, rishi_angles=False, 
+						up_down=False, print_features=False, print_advanced_features=False):
 	veins = parser.parse_csv(bvg_file)
 	dims = parser.get_dimensions(bvg_file)
-	fuzz_cell_dimension = dims[1] / 3
+	fuzz_cell_scale = dims[1] / fuzz_cell_dimension
 	out_img = np.zeros((dims[1], dims[0], 3), np.uint8)
 	drawVeins(veins, out_img)
-	extractIntersections(veins, out_img)
-	extractIntersectionDistances()
-	extractGrid(veins, out_img, fuzz_cell_dimension)
-	extractVeinAngles(veins)
-	# pprint(vein_features)
-	plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
-	plt.title(args.file + 'features'), plt.xticks([]), plt.yticks([])
+	if intersections:
+		extractIntersections(veins, out_img)
+		extractIntersectionDistances()
+	if fuzzy_grid:
+		extractGrid(veins, out_img, fuzz_cell_scale, drawLines=True)
+	if vein_angles:
+		extractVeinAngles(veins)
+	
+	if avg_angles:
+		advanced_vein_features['avg_angles'] = avgVeinAngles(vein_features['veins'], buckets=True)
+	if rishi_angles:
+		advanced_vein_features['rishi_angles'] = completeVeinAngles(veins, buckets=True)
+	if up_down:
+		advanced_vein_features['up_down'] = upDowns(vein_features['fuzzy_grid_heatmap'])
+
+	if print_features:
+		print 'PRINTING BASIC VEIN FEATURES:\n=====================\n'
+		pprint(vein_features)
+	if print_advanced_features:
+		print 'PRINTING ADVANCED VEIN FEATURES:\n=====================\n'
+		for key, val in advanced_vein_features.iteritems():
+			print 'Key: %s : %s' % (key, ', '.join(str(i) for i in val))
+	if index is not None:
+		grid = int('22' + str(index))
+		plt.subplot(grid),plt.imshow(out_img, cmap = 'gray')
+	else:
+		plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
+	plt.title(str(index) + '. features'), plt.xticks([]), plt.yticks([])
 	
 
 if __name__ == '__main__':
-	# veins = generateRandomVeins()
-	argparser = argparse.ArgumentParser(description='Compute bootstrap p-value')
+	argparser = argparse.ArgumentParser(description='BVG!')
 	argparser.add_argument('--dir', type=str, default=None)
 	argparser.add_argument('--file', type=str, default=None)
 	args = argparser.parse_args()
+	
+	uds = []
+	vangs = []
+	cangs = []
 
 	if args.dir:
 		nums = range(1, 4)
 		for num in nums:
 			print '\nSTARTING: ' + args.dir + '-' + str(num)
 			path = os.path.dirname(os.path.abspath(__file__ ))
-			file = path + '/' + args.dir + '/' + args.dir + '-' + str(num) + '.bvg'
-			veins = parser.parse_csv(file)
-			dims = parser.get_dimensions(file)
-			fuzz_cell_dimension = dims[1] / 3
-			out_img = np.zeros((dims[1], dims[0], 3), np.uint8)
-			drawVeins(veins, out_img)
-			# extractIntersections(veins, out_img)
-			# extractIntersectionDistances()
-			extractGrid(veins, out_img, fuzz_cell_dimension)
-			# extractVeinAngles(veins)
-			pprint(vein_features)
-			grid = int('22' + str(num))
-			plt.subplot(grid),plt.imshow(out_img, cmap = 'gray')
-			plt.title(args.dir + '-' + str(num) + 'features'), plt.xticks([]), plt.yticks([])
-			plt.show()
+			file = path + '/' + args.dir + '/' + args.dir + '-' + str(num) + '.csv'
+			bvgFeatureExtractor(file, index=num, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, print_advanced_features=True)
 	if args.file:
 		path = os.path.dirname(os.path.abspath(__file__ ))
 		file = path + '/' + args.file
-		bvgFeatureExtractor(file)
-		ud = upDowns(vein_features['fuzzy_grid_heatmap'])
-		print ud
-		plt.show()
-		# veins = parser.parse_csv(file)
-		# dims = parser.get_dimensions(file)
-		# fuzz_cell_dimension = dims[1] / 3
-		# out_img = np.zeros((dims[1], dims[0], 3), np.uint8)
-		# drawVeins(veins, out_img)
-		# # extractIntersections(veins, out_img)
-		# # extractIntersectionDistances()
-		# extractGrid(veins, out_img)
-		# # extractVeinAngles(veins)
-		# pprint(vein_features)
-		# plt.subplot(221),plt.imshow(out_img, cmap = 'gray')
-		# plt.title(args.file + 'features'), plt.xticks([]), plt.yticks([])
+		bvgFeatureExtractor(file, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, print_advanced_features=True)
+
+	plt.show()
+	
 	
 
 
