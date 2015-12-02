@@ -10,6 +10,8 @@ else
     img_gray = image;
 end
 
+img_gray = imsharpen(img_gray);
+
 fil_img = uint8(imfilter(double(img_gray), ones(20) / 400, 'replicate'));
 
 %%
@@ -51,7 +53,7 @@ edges_filled = filledgegaps(isolated_removed, 25);
 
 [edgelist, ~] = edgelink(edges_filled, 15); % previously 10
 segmented_edgelist = lineseg(edgelist, 3); % previously 5
-% drawedgelist(edgelist, ssize(isolated_removed), 1, 'rand', 2);
+% drawedgelist(edgelist, size(isolated_removed), 1, 'rand', 2);
 drawedgelist(segmented_edgelist, size(isolated_removed), 1, 'rand');
 
 %subplot(2,2,2)
