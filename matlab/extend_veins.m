@@ -1,26 +1,22 @@
-function edgelist = extend_veins(edgelist)
+function edgelist = extend_veins(edgelist, img_size)
 
-    LENGTH_THRESHOLD = 60;
-    PROXIMITY_MERGE_THRESHOLD = 5;
-    PROXIMITY_MERGE_SLOPE_THRESHOLD = 0.1;
-    EXTENSION_STEP_SIZE = 10;
-    MAX_EXTENSION = 100;
-    
-    new_edgelist = {};
+    LENGTH_THRESHOLD = img_size(1)/10;
+    PROXIMITY_MERGE_THRESHOLD = 15;
+    PROXIMITY_MERGE_SLOPE_THRESHOLD = 0.3;
+%     EXTENSION_STEP_SIZE = 10;
+%     MAX_EXTENSION = 100;  
     
     % Filter out segments below a certain length
-    for i = 1:length(edgelist)
-        if (segment_length(edgelist{i}) > LENGTH_THRESHOLD)
-            new_edgelist{1,length(new_edgelist)+1} = edgelist{i};
-        end
-    end
+    edgelist = length_filter(edgelist, LENGTH_THRESHOLD);
     
     % Re-orient segments to be top-down
-    for i = 1:length(new_edgelist)
-       if(new_edgelist{i}(1,1) > new_edgelist{i}(end,1))
-            new_edgelist{i} = flipud(new_edgelist{i});
+    for i = 1:length(edgelist)
+       if(edgelist{i}(1,1) > edgelist{i}(end,1))
+            edgelist{i} = flipud(edgelist{i});
        end
     end
+    
+    new_edgelist = edgelist;
     
     % Connect attached segments with similar slopes
     for i = 1:length(new_edgelist)
@@ -35,8 +31,9 @@ function edgelist = extend_veins(edgelist)
                 j_slope     = atan((j_end(1) - j_start(1)) / (j_end(2) - j_start(2)));
                 
                 slope_diff  = abs(i_slope - j_slope);
+                disp(slope_diff)
                 if (pdist2(i_end, j_start) < PROXIMITY_MERGE_THRESHOLD)
-                    if (slope_diff < PROXIMITY_MERGE_SLOPE_THRESHOLD)
+                    if (slope_diff < PROXIMITY_MERGE_SLOPE_THRESHOLD || pdist2(i_end, j_start) < 2 || poly_poly_dist(edgelist{j}(:,2), edgelist{j}(:,1), edgelist{i}(:,2), edgelist{i}(:,1)) < 20)
                         new_edgelist(i) = {[new_edgelist{i}; new_edgelist{j}]};
                         new_edgelist(j) = {-1};
                     end
@@ -57,109 +54,158 @@ function edgelist = extend_veins(edgelist)
     
     edgelist = connected_edgelist;
     
-    %% Extend segments to find intersections
-    
-    % Compute all top and bottom angles
-    top_deltas = zeros(2, length(edgelist));
-    bottom_deltas = zeros(2, length(edgelist));
-    
-    for i = 1:length(edgelist)
-        cur_seg = edgelist{i};
-        
-        % start points are the top and bottom endpoints of the edge, and
-        % end points are the third and third-last points, respectively (for
-        % top and bottom). If there is an edge composed of only two points
-        % (a single line segment), obviously just use the only two points
-        % that are defined.
-        if(length(cur_seg) == 2)
-            top_start       = cur_seg(1,:);
-            top_end         = cur_seg(2,:);
-            bottom_start    = top_end;
-            bottom_end      = top_start;
-        else
-            top_start       = cur_seg(1,:);
-%             top_end         = cur_seg(3,:);
-            top_end         = cur_seg(end,:);
-            bottom_start    = cur_seg(end,:);
-%             bottom_end      = cur_seg(end-2,:);
-            bottom_end      = cur_seg(1,:);
-        end
-
-        % For both top and bottom extensions, compute the angle between the
-        % start and the end
-        top_angle = atan((top_end(1) - top_start(1)) / (top_end(2) - top_start(2)));
-        bottom_angle = atan((bottom_end(1) - bottom_start(1)) / (bottom_end(2) - bottom_start(2)));
-        
-        % Compute the delta for each step for top and bottom, using the
-        % angle between the start and end for each, and selecting the
-        % current orientation based on the start and end positions with
-        % respect to each other        
-        if(top_start(1) > top_end(1) && top_start(2) > top_end(2))
-            top_y_delta  = abs(sin(top_angle) * EXTENSION_STEP_SIZE);
-            top_x_delta  = abs(cos(top_angle) * EXTENSION_STEP_SIZE);
-        elseif (top_start(1) > top_end(1) && top_start(2) <= top_end(2))
-            top_y_delta  = abs(sin(top_angle) * EXTENSION_STEP_SIZE);
-            top_x_delta  = -1 * abs(cos(top_angle) * EXTENSION_STEP_SIZE);
-        elseif (top_start(1) <= top_end(1) && top_start(2) <= top_end(2))
-            top_y_delta  = -1 * abs(sin(top_angle) * EXTENSION_STEP_SIZE);
-            top_x_delta  = -1 * abs(cos(top_angle) * EXTENSION_STEP_SIZE);
-        elseif (top_start(1) <= top_end(1) && top_start(2) > top_end(2))
-            top_y_delta  = -1 * abs(sin(top_angle) * EXTENSION_STEP_SIZE);
-            top_x_delta  = abs(cos(top_angle) * EXTENSION_STEP_SIZE);
-        end
-        
-        top_deltas(:,i) = [top_y_delta top_x_delta];
-        
-        % Do bottoms
-        if(bottom_start(1) > bottom_end(1) && bottom_start(2) > bottom_end(2))
-            bottom_y_delta  = abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
-            bottom_x_delta  = abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
-        elseif (bottom_start(1) > bottom_end(1) && bottom_start(2) <= bottom_end(2))
-            bottom_y_delta  = abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
-            bottom_x_delta  = -1 * abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
-        elseif (bottom_start(1) <= bottom_end(1) && bottom_start(2) <= bottom_end(2))
-            bottom_y_delta  = -1 * abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
-            bottom_x_delta  = -1 * abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
-        elseif (bottom_start(1) <= bottom_end(1) && bottom_start(2) > bottom_end(2))
-            bottom_y_delta  = -1 * abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
-            bottom_x_delta  = abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
-        end
-        
-        bottom_deltas(:,i) = [bottom_y_delta bottom_x_delta];
-        
-    end
-    
-    % Actually do the extensions until intersection
-    
-    extend_further = ones(1, length(new_edgelist));
-    for extendIter = 1:(MAX_EXTENSION/EXTENSION_STEP_SIZE)
-        for i = 1:length(edgelist)
-            cur_seg = edgelist{i};
-            if(extend_further(i))
-                % do the extension on both sides
-                top_start       = cur_seg(1,:);
-                bottom_start    = cur_seg(end,:);
-                
-                new_top_y = top_start(1) + top_deltas(1, i);
-                new_top_x = top_start(2) + top_deltas(2, i);
-                
-                new_bottom_y = bottom_start(1) + bottom_deltas(1, i);
-                new_bottom_x = bottom_start(2) + bottom_deltas(2, i);
-                edgelist{i}     = [new_top_y, new_top_x; edgelist{i}; new_bottom_y, new_bottom_x];
-                
-                % if intersection is now found, do not extend on future
-                % iterations
-                for j = 1:length(edgelist)
-                   if (i ~= j)
-                      if (numel(polyxpoly(edgelist{i}(:,2), edgelist{i}(:,1), edgelist{j}(:,2), edgelist{j}(:,1))) ~= 0)
-                          extend_further(i) = 0;
-                          break;
-                      end
-                   end
-                end
-                
-            end
-        end
-    end
+%     %% Extend segments to find intersections
+%     
+%     % Compute all top and bottom angles
+%     top_deltas = zeros(2, length(edgelist));
+%     bottom_deltas = zeros(2, length(edgelist));
+%     
+%     for i = 1:length(edgelist)
+%         cur_seg = edgelist{i};
+%         
+%         % start points are the top and bottom endpoints of the edge, and
+%         % end points are the third and third-last points, respectively (for
+%         % top and bottom). If there is an edge composed of only two points
+%         % (a single line segment), obviously just use the only two points
+%         % that are defined.
+%         if(length(cur_seg) == 2)
+%             top_start       = cur_seg(1,:);
+%             top_end         = cur_seg(2,:);
+%             bottom_start    = top_end;
+%             bottom_end      = top_start;
+%         else
+%             top_start       = cur_seg(1,:);
+% %             top_end         = cur_seg(3,:);
+%             top_end         = cur_seg(end,:);
+%             bottom_start    = cur_seg(end,:);
+% %             bottom_end      = cur_seg(end-2,:);
+%             bottom_end      = cur_seg(1,:);
+%         end
+% 
+%         % For both top and bottom extensions, compute the angle between the
+%         % start and the end
+%         top_angle = atan((top_end(1) - top_start(1)) / (top_end(2) - top_start(2)));
+%         bottom_angle = atan((bottom_end(1) - bottom_start(1)) / (bottom_end(2) - bottom_start(2)));
+%         
+%         % Compute the delta for each step for top and bottom, using the
+%         % angle between the start and end for each, and selecting the
+%         % current orientation based on the start and end positions with
+%         % respect to each other        
+%         if(top_start(1) > top_end(1) && top_start(2) > top_end(2))
+%             top_y_delta  = abs(sin(top_angle) * EXTENSION_STEP_SIZE);
+%             top_x_delta  = abs(cos(top_angle) * EXTENSION_STEP_SIZE);
+%         elseif (top_start(1) > top_end(1) && top_start(2) <= top_end(2))
+%             top_y_delta  = abs(sin(top_angle) * EXTENSION_STEP_SIZE);
+%             top_x_delta  = -1 * abs(cos(top_angle) * EXTENSION_STEP_SIZE);
+%         elseif (top_start(1) <= top_end(1) && top_start(2) <= top_end(2))
+%             top_y_delta  = -1 * abs(sin(top_angle) * EXTENSION_STEP_SIZE);
+%             top_x_delta  = -1 * abs(cos(top_angle) * EXTENSION_STEP_SIZE);
+%         elseif (top_start(1) <= top_end(1) && top_start(2) > top_end(2))
+%             top_y_delta  = -1 * abs(sin(top_angle) * EXTENSION_STEP_SIZE);
+%             top_x_delta  = abs(cos(top_angle) * EXTENSION_STEP_SIZE);
+%         end
+%         
+%         top_deltas(:,i) = [top_y_delta top_x_delta];
+%         
+%         % Do bottoms
+%         if(bottom_start(1) > bottom_end(1) && bottom_start(2) > bottom_end(2))
+%             bottom_y_delta  = abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
+%             bottom_x_delta  = abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
+%         elseif (bottom_start(1) > bottom_end(1) && bottom_start(2) <= bottom_end(2))
+%             bottom_y_delta  = abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
+%             bottom_x_delta  = -1 * abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
+%         elseif (bottom_start(1) <= bottom_end(1) && bottom_start(2) <= bottom_end(2))
+%             bottom_y_delta  = -1 * abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
+%             bottom_x_delta  = -1 * abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
+%         elseif (bottom_start(1) <= bottom_end(1) && bottom_start(2) > bottom_end(2))
+%             bottom_y_delta  = -1 * abs(sin(bottom_angle) * EXTENSION_STEP_SIZE);
+%             bottom_x_delta  = abs(cos(bottom_angle) * EXTENSION_STEP_SIZE);
+%         end
+%         
+%         bottom_deltas(:,i) = [bottom_y_delta bottom_x_delta];
+%         
+%     end
+%     
+%     % Actually do the extensions until intersection
+%     
+%     top_extend_further = ones(1, length(new_edgelist));
+%     bottom_extend_further = ones(1, length(new_edgelist));
+%     
+%     for extendIter = 1:(MAX_EXTENSION/EXTENSION_STEP_SIZE)
+%         for i = 1:length(edgelist)
+%             cur_seg = edgelist{i};
+%             new_seg = edgelist{i};
+%             if(top_extend_further(i))
+%                 % do the extension on top
+%                 top_start = cur_seg(1,:);
+%                 new_top_y = top_start(1) + top_deltas(1, i);
+%                 new_top_x = top_start(2) + top_deltas(2, i);
+%                 
+%                 % Make sure we don't go out of the bounds of the image and
+%                 % stop extending if we do
+%                 if(new_top_y < 1 || new_top_y > img_size(1))
+%                     new_top_y = max(new_top_y, 1);
+%                     new_top_y = min(new_top_y, img_size(1));
+%                     top_extend_further(i) = 0;
+%                 end
+%                 if(new_top_x < 1 || new_top_x > img_size(2))
+%                     new_top_x = max(new_top_x, 1);
+%                     new_top_x = min(new_top_x, img_size(2));
+%                     top_extend_further(i) = 0;
+%                 end
+%                 
+%                 new_seg = [new_top_y, new_top_x; new_seg];
+%                 
+%                 % if intersection is now found, do not extend on future
+%                 % iterations
+%                 for j = 1:length(edgelist)
+%                    if (i ~= j)
+%                       if (numel(polyxpoly(new_seg(:,2), new_seg(:,1), edgelist{j}(:,2), edgelist{j}(:,1))) ~= 0)
+%                           top_extend_further(i) = 0;
+%                           break;
+%                       end
+%                    end
+%                 end
+%             end
+%             
+%             if(bottom_extend_further(i))
+%                 bottom_start = cur_seg(end,:);
+%                 new_bottom_y = bottom_start(1) + bottom_deltas(1, i);
+%                 new_bottom_x = bottom_start(2) + bottom_deltas(2, i);
+%                 
+%                 
+%                 % Make sure we don't go out of the bounds of the image and
+%                 % stop extending if we do
+%                 if(new_bottom_y < 1 || new_bottom_y > img_size(1))
+%                     new_bottom_y = max(new_bottom_y, 1);
+%                     new_bottom_y = min(new_bottom_y, img_size(1));
+%                     bottom_extend_further(i) = 0;
+%                 end
+%                 if(new_bottom_x < 1 || new_bottom_x > img_size(2))
+%                     new_bottom_x = max(new_bottom_x, 1);
+%                     new_bottom_x = min(new_bottom_x, img_size(2));
+%                     bottom_extend_further(i) = 0;
+%                 end
+%                 
+%                 new_seg_bottom = [cur_seg; new_bottom_y, new_bottom_x];
+%                 
+%                 for j = 1:length(edgelist)
+%                    if (i ~= j)
+%                       if (numel(polyxpoly(new_seg_bottom(:,2), new_seg_bottom(:,1), edgelist{j}(:,2), edgelist{j}(:,1))) ~= 0)
+%                           bottom_extend_further(i) = 0;
+%                           break;
+%                       end
+%                    end
+%                 end
+%                 
+%                 new_seg = [new_seg; new_bottom_y, new_bottom_x];
+%                 
+%             end
+% %             edgelist{i} = max(edgelist{i}(:,:),1);
+% %             edgelist{i}(:,1) = min(edgelist{i}(:,1), img_size(1));
+% %             edgelist{i}(:,2) = min(edgelist{i}(:,2), img_size(2));
+%             edgelist{i} = new_seg;
+%         end
+%     end
     
 end
