@@ -9,8 +9,6 @@ function do_bvg(inFile, outFile)
         img_gray = image;
     end
 
-    img_gray = imsharpen(img_gray);
-
     fil_img = uint8(imfilter(double(img_gray), ones(30) / 900, 'replicate'));
 
     small = imresize(fil_img, .1);
@@ -26,14 +24,27 @@ function do_bvg(inFile, outFile)
     vein_img(end-3:end,:) = 0;  
     vein_img(1:3,:) = 0;
     
-    vein_img_filled = filledgegaps(vein_img, 3);
-    
-    vein_img_cleaned = bwareaopen(vein_img_filled, 10);
-        
-    vein_img_connected = filledgegaps(vein_img_cleaned, 7);
+%     vein_img_filled = filledgegaps(vein_img, 3);
+%     vein_img_cleaned = bwareaopen(vein_img_filled, 10);
+%     vein_img_connected = filledgegaps(vein_img_cleaned, 7);
+%     [edgelist, ~] = edgelink(vein_img_connected, 1);
 
-    [edgelist, ~] = edgelink(vein_img_connected, 1);
+    vein_img = bwareaopen(vein_img, 2); % prev 5
     
-    export_edgelist(edgelist, outFile, img_size);
+    vein_img = filledgegaps(vein_img, 4);
+
+    
+    [edgelist, ~] = edgelink(vein_img, 1);
+    
+    subplot(2,2,4)
+    drawedgelist(edgelist, size(fil), 1, 'rand');
+    
+    extend_edgelist = extend_veins(edgelist, img_size);
+    
+    subplot(2,2,2)
+    drawedgelist(extend_edgelist, size(fil), 1, 'rand');
+    
+    export_edgelist(extend_edgelist, outFile, img_size);
 
 end
+
