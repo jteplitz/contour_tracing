@@ -76,6 +76,9 @@ def applyMask(img, mask):
                 output[i][j] = img[i][j]
     return output
 
+def getContour(mask):
+    return cv2.findContour(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
 def cropImg(path):
     img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)
 
