@@ -26,7 +26,11 @@ function vein_img = find_minima(isOctave, fil, vein_img)
           vein_img(sub2ind(size(vein_img), y(:), imin(:))) = 1;
           
           for promLoc = 1:length(imin)
-              all_x_prom(y(promLoc), imin(promLoc)) = prominences(promLoc); 
+              if(prominences(promLoc) < 0.01)
+                 vein_img(y(promLoc), imin(promLoc)) = 0;
+              else
+                 all_x_prom(y(promLoc), imin(promLoc)) = prominences(promLoc); 
+              end
           end
           
       end
