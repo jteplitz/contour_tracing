@@ -110,8 +110,8 @@ def extractGrid(veins, out_img, fuzz_cell_scale, drawLines=False):
 	new_cell_counts = {} # MAPPING OF NEW CELLS TO COUNT OF VEIN OCCURRENCES PER CELL
 	print 'VEINS! %d' % len(veins)
 
-	for x in range(1, out_img.shape[1]+1):
-		for y in range(1, out_img.shape[0]+1):
+	for x in range(0, out_img.shape[1]):
+		for y in range(0, out_img.shape[0]):
 			new_x_cell = math.floor(float(x) / float(fuzz_cell_scale))
 			new_y_cell = math.floor(float(y) / float(fuzz_cell_scale))
 			if drawLines:
@@ -153,13 +153,60 @@ def extractVeinAngles(veins):
 def upDowns(fuzzy_grid_heatmap):
 	ud = []
 	prev_val = None
-	for key, val in fuzzy_grid_heatmap.iteritems():
-		if prev_val is not None:
-			pval = prev_val
-			if prev_val == 1:
-				pval = 0
-			ud.append(pval < val)
-		prev_val = val
+	x_itr = 0
+	y_itr = 0
+	start_pt = (x_itr, y_itr)
+	next_pt = (x_itr+1, y_itr)
+
+	while next_pt in fuzzy_grid_heatmap.keys():
+		while next_pt in fuzzy_grid_heatmap.keys():
+			start_val = fuzzy_grid_heatmap[start_pt]
+			next_val = fuzzy_grid_heatmap[next_pt]
+			if start_val == 1:
+				start_val = 0
+			if next_val == 1:
+				next_val = 0
+			ud.append(start_val < next_val)
+			start_pt = next_pt
+			next_pt = (next_pt[0]+1, next_pt[1])
+		x_itr = 0
+		y_itr += 1
+		start_pt = (x_itr, y_itr)
+		next_pt = (x_itr+1, y_itr)
+
+	x_itr = 0
+	y_itr = 0
+	start_pt = (x_itr, y_itr)
+	next_pt = (x_itr, y_itr+1)
+
+	while next_pt in fuzzy_grid_heatmap.keys():
+		while next_pt in fuzzy_grid_heatmap.keys():
+			start_val = fuzzy_grid_heatmap[start_pt]
+			next_val = fuzzy_grid_heatmap[next_pt]
+			if start_val == 1:
+				start_val = 0
+			if next_val == 1:
+				next_val = 0
+			ud.append(start_val < next_val)
+			start_pt = next_pt
+			next_pt = (next_pt[0], next_pt[1]+1)
+		x_itr += 1
+		y_itr = 0
+		start_pt = (x_itr, y_itr)
+		next_pt = (x_itr, y_itr+1)
+	
+	# if next_pt in fuzzy_grid_heatmap.keys():
+	# 	if prev_val == 1:
+	# 		pval = 0
+	# 	ud.append(pval < val)
+	# for key, val in fuzzy_grid_heatmap.iteritems():
+	# 	if prev_val is not None:
+	# 		pval = prev_val
+	# 		if prev_val == 1:
+	# 			pval = 0
+	# 		ud.append(pval < val)
+	# 	prev_val = val
+	
 	return ud
 
 def avgVeinAngles(vein_angles, buckets=False):
