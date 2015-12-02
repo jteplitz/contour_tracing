@@ -1,8 +1,5 @@
 import os, sys
 
-path = os.path.dirname(os.path.abspath(__file__ ))
-path += '/' + sys.argv[1]
-
 def get_dimensions(path):
 	with open(path) as f:
 		first_line = f.readline()
@@ -31,5 +28,3 @@ def parse_csv(path):
 					prev_coord = coord
 				veins.append(segments)
 		return veins
-
-parse_csv(path)
