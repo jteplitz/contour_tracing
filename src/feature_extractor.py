@@ -27,6 +27,7 @@ advanced_vein_features = {}
 advanced_vein_features['avg_angles'] = []
 advanced_vein_features['rishi_angles'] = []
 advanced_vein_features['up_down'] = []
+advanced_vein_features['midpoint_veins'] = []
 
 # BUCKETING
 point_buckets = 40
@@ -240,10 +241,35 @@ def completeVeinAngles(veins, buckets=False):
 		complete_vein_angles.append(ang)
 	return sorted(complete_vein_angles)
 
+def midpointVeins(veins, buckets=False):
+	midpoints = []
+	distances = []
+	for vein in veins:
+		first_point = vein[0][0]
+		last_point = vein[-1][1]
+		x_mid = (first_point[0] + last_point[0]) / 2
+		y_mid = (first_point[1] + last_point[1]) / 2
+		midpoints.append((x_mid, y_mid))
+
+	for point in midpoints:
+		for point2 in midpoints:
+			if point != point2:
+				a = np.array(point)
+				b = np.array(point2)
+				dist = math.floor(np.linalg.norm(a-b))
+				if buckets:
+					dist = dist % distance_buckets
+				if dist not in distances:
+					distances.append(dist)
+
+	return sorted(distances)
+
+
 def bvgFeatureExtractor(bvg_file, index=None, 
 						intersections=False, fuzzy_grid=False, 
 						vein_angles=False, avg_angles=False, rishi_angles=False, 
-						up_down=False, print_features=False, print_advanced_features=False):
+						up_down=False, midpoint_veins=False,
+						print_features=False, print_advanced_features=False):
 	veins = parser.parse_csv(bvg_file)
 	dims = parser.get_dimensions(bvg_file)
 	fuzz_cell_scale = dims[1] / fuzz_cell_dimension
@@ -263,6 +289,8 @@ def bvgFeatureExtractor(bvg_file, index=None,
 		advanced_vein_features['rishi_angles'] = completeVeinAngles(veins, buckets=True)
 	if up_down:
 		advanced_vein_features['up_down'] = upDowns(vein_features['fuzzy_grid_heatmap'])
+	if midpoint_veins:
+		advanced_vein_features['midpoint_veins'] = midpointVeins(veins, buckets=True)
 
 	if print_features:
 		print 'PRINTING BASIC VEIN FEATURES:\n=====================\n'
@@ -295,11 +323,11 @@ if __name__ == '__main__':
 			print '\nSTARTING: ' + args.dir + '-' + str(num)
 			path = os.path.dirname(os.path.abspath(__file__ ))
 			file = path + '/' + args.dir + '/' + args.dir + '-' + str(num) + '.csv'
-			bvgFeatureExtractor(file, index=num, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, print_advanced_features=True)
+			bvgFeatureExtractor(file, index=num, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, midpoint_veins=True, print_advanced_features=True)
 	if args.file:
 		path = os.path.dirname(os.path.abspath(__file__ ))
 		file = path + '/' + args.file
-		bvgFeatureExtractor(file, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, print_advanced_features=True)
+		bvgFeatureExtractor(file, intersections=False, fuzzy_grid=True, vein_angles=True, avg_angles=True, rishi_angles=True, up_down=True, midpoint_veins=True, print_advanced_features=True)
 
 	plt.show()
 	
